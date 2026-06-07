@@ -1,0 +1,7 @@
+# Web / API layer. torch + acestep are installed in the Dockerfile so their
+# CUDA build is pinned to the Blackwell-compatible cu128 wheels.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+pydantic>=2.6
+soundfile>=0.12

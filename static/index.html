@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Music Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="grain"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo-mark" id="logoScope">
+        <svg viewBox="0 0 64 32" preserveAspectRatio="none" aria-hidden="true">
+          <polyline id="logoWave" points="" fill="none" stroke-width="2" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>SONORA<span class="brand-dot">.</span></h1>
+        <p class="tagline">local ai music studio</p>
+      </div>
+    </div>
+    <div class="status-badge" id="statusBadge" title="Backend status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">connecting…</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- LEFT: controls -->
+    <section class="console">
+
+      <!-- Mode -->
+      <div class="mode-switch" role="tablist">
+        <button class="mode-btn active" data-mode="genre" role="tab">⊞ Genre Builder</button>
+        <button class="mode-btn" data-mode="text" role="tab">✎ Text Prompt</button>
+      </div>
+
+      <!-- TEXT MODE -->
+      <div class="panel mode-pane" id="paneText" hidden>
+        <label class="field-label">Describe the music</label>
+        <textarea id="textPrompt" rows="4"
+          placeholder="e.g. warm analog synthwave with a driving bassline, neon-lit, cinematic build, 110 bpm…"></textarea>
+        <p class="hint">Plain language works best. The structured controls below still apply.</p>
+      </div>
+
+      <!-- GENRE MODE -->
+      <div class="panel mode-pane" id="paneGenre">
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Genre</label>
+            <div class="select-wrap">
+              <select id="genre"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Sub-genre</label>
+            <div class="select-wrap">
+              <select id="subgenre"></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="field blend-block">
+          <label class="field-label">
+            Genre Blend
+            <span class="readout" id="blendReadout">off</span>
+          </label>
+          <div class="grid-2 blend-row">
+            <div class="select-wrap">
+              <select id="blendGenre"><option value="">— none —</option></select>
+            </div>
+            <input type="range" id="blendAmount" min="0" max="100" value="0" class="slider" />
+          </div>
+        </div>
+      </div>
+
+      <!-- SHARED CONTROLS -->
+      <div class="panel">
+        <h2 class="panel-title">Sound</h2>
+
+        <!-- Instruments -->
+        <div class="field">
+          <label class="field-label">Instruments
+            <span class="readout" id="instReadout">any</span>
+          </label>
+          <div class="chips" id="instruments"></div>
+        </div>
+
+        <!-- Energy -->
+        <div class="field">
+          <label class="field-label">Energy
+            <span class="readout" id="energyReadout">50</span>
+          </label>
+          <input type="range" id="energy" min="0" max="100" value="50" class="slider energy-slider" />
+          <div class="scale-ticks"><span>ambient</span><span>mellow</span><span>driving</span><span>intense</span><span>explosive</span></div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Tempo -->
+          <div class="field">
+            <label class="field-label">Tempo
+              <span class="readout" id="tempoReadout">110 bpm</span>
+            </label>
+            <input type="range" id="tempo" min="50" max="200" value="110" class="slider" />
+            <div class="tempo-feels" id="tempoFeels"></div>
+          </div>
+          <!-- Key -->
+          <div class="field">
+            <label class="field-label">Key</label>
+            <div class="select-wrap">
+              <select id="key"><option value="">— any —</option></select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Structure -->
+        <div class="field">
+          <label class="field-label">Structure
+            <span class="readout" id="structReadout">model decides</span>
+          </label>
+          <div class="chips structure-chips" id="structure"></div>
+          <p class="hint">Tap blocks in the order you want them. Tap again to remove.</p>
+          <div class="struct-sequence" id="structSeq"></div>
+        </div>
+
+        <!-- Instrumental toggle -->
+        <div class="field toggle-row">
+          <label class="field-label" for="instrumental">Instrumental (no vocals)</label>
+          <label class="switch">
+            <input type="checkbox" id="instrumental" checked />
+            <span class="track"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- REFERENCE AUDIO -->
+      <div class="panel">
+        <h2 class="panel-title">Build from a clip <span class="opt">optional · audio2audio</span></h2>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept="audio/*" hidden />
+          <div class="dz-inner" id="dzInner">
+            <span class="dz-icon">⤓</span>
+            <p>Drop an audio clip or <button type="button" class="link" id="browseBtn">browse</button></p>
+            <p class="hint">wav / mp3 / flac · up to 50&nbsp;MB</p>
+          </div>
+        </div>
+        <div class="field ref-strength" id="refStrengthWrap" hidden>
+          <label class="field-label">Stay close to reference
+            <span class="readout" id="refReadout">0.50</span>
+          </label>
+          <input type="range" id="refStrength" min="0" max="100" value="50" class="slider" />
+        </div>
+      </div>
+
+      <!-- ADVANCED -->
+      <details class="panel advanced">
+        <summary>Advanced</summary>
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Duration
+              <span class="readout" id="durReadout">60s</span>
+            </label>
+            <input type="range" id="duration" min="8" max="240" value="60" step="1" class="slider" />
+          </div>
+          <div class="field">
+            <label class="field-label">Seed</label>
+            <input type="number" id="seed" placeholder="random" class="text-input" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Quality (steps)
+              <span class="readout" id="stepsReadout">60</span>
+            </label>
+            <input type="range" id="steps" min="20" max="120" value="60" step="1" class="slider" />
+          </div>
+          <div class="field">
+            <label class="field-label">Guidance
+              <span class="readout" id="guidanceReadout">15</span>
+            </label>
+            <input type="range" id="guidance" min="3" max="30" value="15" step="0.5" class="slider" />
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">Extra tags</label>
+          <input type="text" id="extraTags" placeholder="reverb-heavy, vintage, wide stereo…" class="text-input" />
+        </div>
+      </details>
+    </section>
+
+    <!-- RIGHT: output -->
+    <aside class="stage">
+      <div class="stage-inner">
+        <div class="visualizer" id="visualizer">
+          <canvas id="scope"></canvas>
+          <div class="viz-overlay" id="vizOverlay">
+            <p class="viz-status" id="vizStatus">Ready</p>
+            <p class="viz-sub" id="vizSub">Configure your track and hit generate.</p>
+          </div>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap" hidden>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <p class="progress-msg" id="progressMsg"></p>
+        </div>
+
+        <audio id="player" controls hidden></audio>
+
+        <div class="result-meta" id="resultMeta" hidden>
+          <div class="meta-row"><span class="meta-k">prompt</span><span class="meta-v" id="metaPrompt"></span></div>
+          <div class="meta-row"><span class="meta-k">seed</span><span class="meta-v" id="metaSeed"></span></div>
+          <a class="download-btn" id="downloadBtn" download>↓ Download .wav</a>
+        </div>
+
+        <button class="generate-btn" id="generateBtn">
+          <span class="gen-label">Generate</span>
+          <span class="gen-spinner" hidden></span>
+        </button>
+        <p class="err" id="errBox" hidden></p>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

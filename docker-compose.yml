@@ -1,0 +1,27 @@
+services:
+  music-studio:
+    build:
+      context: .
+      args:
+        # Bump to a newer cu128 tag any time: 2.9.1 / 2.10.0 / 2.11.0, etc.
+        PYTORCH_TAG: ${PYTORCH_TAG:-2.8.0-cuda12.8-cudnn9-devel}
+    image: ai-music-studio:latest
+    container_name: ai-music-studio
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    volumes:
+      # Persists model checkpoints, uploads and generated audio across restarts.
+      - ./data:/data
+    # ---- GPU access (requires NVIDIA Container Toolkit on the host) ----
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Large models + audio buffers benefit from generous shared memory.
+    shm_size: "8gb"
+    restart: unless-stopped
