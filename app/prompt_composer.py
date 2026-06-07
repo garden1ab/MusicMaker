@@ -170,6 +170,45 @@ TEMPO_NAMES = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Vocals
+# ---------------------------------------------------------------------------
+VOCAL_GENDERS = {
+    "Female": ["female vocals"],
+    "Male": ["male vocals"],
+    "Androgynous": ["androgynous vocals"],
+    "Choir": ["choir", "group vocals", "harmonized"],
+    "Child": ["child vocals"],
+}
+
+# Singing techniques / timbres expressed as prompt tags.
+VOCAL_STYLES = [
+    "soulful", "powerful belting", "breathy", "raspy", "smooth", "airy",
+    "falsetto", "operatic", "whisper", "gritty", "emotional", "warm",
+    "autotuned", "rap", "spoken word", "vibrato", "harmonies", "ad-libs",
+    "energetic delivery", "intimate", "anthemic",
+]
+
+# Top languages ACE-Step handles well.
+LANGUAGES = [
+    "English", "Chinese", "Spanish", "Japanese", "Korean", "French",
+    "German", "Italian", "Portuguese", "Russian",
+]
+
+
+def _vocal_descriptors(gender, styles, language) -> list[str]:
+    tags: list[str] = []
+    if gender and gender in VOCAL_GENDERS:
+        tags.extend(VOCAL_GENDERS[gender])
+    elif gender:
+        tags.append(f"{gender} vocals".lower())
+    if styles:
+        tags.extend(styles)
+    if language and language.lower() != "english":
+        tags.append(f"{language} lyrics")
+    return tags
+
+
 def _energy_descriptors(energy) -> list[str]:
     """Map an energy value (0-100 int, or a named band) to descriptors."""
     if energy is None:
@@ -216,27 +255,46 @@ def _dedupe_preserve_order(items: list[str]) -> list[str]:
     return out
 
 
-def build_lyrics_scaffold(structure: Optional[list[str]], instrumental: bool) -> str:
+def build_lyrics(
+    user_lyrics: Optional[str],
+    structure: Optional[list[str]],
+    instrumental: bool,
+) -> str:
     """
-    ACE-Step uses bracketed structure tags inside the `lyrics` field to shape
-    song form. For instrumental tracks we emit structure markers with no words;
-    for vocal tracks we emit the same markers and let the user fill lyrics later
-    (or let the model improvise placeholder vocals).
+    Build the ACE-Step `lyrics` field.
+
+    ACE-Step sings whatever is in this field, using bracketed structure tags
+    such as [verse]/[chorus]/[bridge] to shape song form.
+
+    Rules:
+    * instrumental  -> "[instrumental]" (+ any chosen structure markers)
+    * vocals + user lyrics:
+        - if the lyrics already contain bracket tags, trust them verbatim;
+        - otherwise return the lyrics as written (line breaks help vocal sync).
+    * vocals + no lyrics + structure -> emit structure tags so the model
+      improvises vocals that follow that form.
+    * vocals + nothing -> empty (model decides).
     """
-    if not structure:
-        return "[instrumental]" if instrumental else ""
-    parts = []
-    for section in structure:
+    structure_tags = []
+    for section in (structure or []):
         tag = section.strip().lower().replace(" ", "")
         if not tag:
             continue
         if not tag.startswith("["):
             tag = f"[{tag}]"
-        parts.append(tag)
+        structure_tags.append(tag)
+
     if instrumental:
-        # Prepend a global instrumental marker so the model knows there are no vocals.
-        return "[instrumental]\n" + "\n".join(parts)
-    return "\n".join(parts)
+        if structure_tags:
+            return "[instrumental]\n" + "\n".join(structure_tags)
+        return "[instrumental]"
+
+    if user_lyrics and user_lyrics.strip():
+        return user_lyrics.strip()
+
+    if structure_tags:
+        return "\n".join(structure_tags)
+    return ""
 
 
 def compose(
@@ -254,9 +312,16 @@ def compose(
     structure: Optional[list[str]] = None,    # e.g. ["intro","verse","chorus",...]
     instrumental: bool = True,
     extra_tags: Optional[str] = None,
+    # --- vocals ---
+    lyrics: Optional[str] = None,             # raw lyrics text
+    vocal_gender: Optional[str] = None,
+    vocal_styles: Optional[list[str]] = None,
+    language: Optional[str] = None,
+    # --- reference clip role ---
+    ref_role: str = "music",                  # "music" | "voice"
 ) -> dict:
     """
-    Returns a dict:  { "prompt": <tag string>, "lyrics": <scaffold> }
+    Returns a dict:  { "prompt": <tag string>, "lyrics": <lyrics/scaffold> }
     suitable for handing straight to the ACE-Step pipeline.
     """
     tags: list[str] = []
@@ -290,6 +355,16 @@ def compose(
     if instruments:
         tags.extend(instruments)
 
+    # Vocals vs instrumental
+    if instrumental:
+        tags.append("instrumental")
+    else:
+        tags.append("vocals")
+        tags.extend(_vocal_descriptors(vocal_gender, vocal_styles, language))
+        # When cloning/matching a reference voice, nudge timbre consistency.
+        if ref_role == "voice":
+            tags.append("consistent vocal timbre")
+
     # Energy
     tags.extend(_energy_descriptors(energy))
 
@@ -302,19 +377,15 @@ def compose(
     if key:
         tags.append(key.strip())
 
-    # Vocal vs instrumental hint
-    if instrumental:
-        tags.append("instrumental")
-
     # Free-form extra tags
     if extra_tags:
         tags.extend([t.strip() for t in extra_tags.split(",") if t.strip()])
 
     tags = _dedupe_preserve_order(tags)
     prompt = ", ".join(tags)
-    lyrics = build_lyrics_scaffold(structure, instrumental)
+    lyrics_field = build_lyrics(lyrics, structure, instrumental)
 
-    return {"prompt": prompt, "lyrics": lyrics}
+    return {"prompt": prompt, "lyrics": lyrics_field}
 
 
 # Convenience for the API layer / frontend
@@ -322,6 +393,15 @@ def catalog() -> dict:
     """Serializable catalog of genres + subgenres for the UI dropdowns."""
     return {
         g: list(meta["subgenres"].keys()) for g, meta in GENRES.items()
+    }
+
+
+def vocal_catalog() -> dict:
+    """Vocal-specific options for the UI."""
+    return {
+        "genders": list(VOCAL_GENDERS.keys()),
+        "styles": list(VOCAL_STYLES),
+        "languages": list(LANGUAGES),
     }
 
 

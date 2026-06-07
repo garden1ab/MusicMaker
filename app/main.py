@@ -82,11 +82,13 @@ def _get_job(job_id: str) -> Optional[dict]:
 def catalog():
     return {
         "genres": prompt_composer.catalog(),
+        "vocals": prompt_composer.vocal_catalog(),
         "instruments": COMMON_INSTRUMENTS,
         "keys": KEYS,
         "structure_blocks": STRUCTURE_BLOCKS,
         "tempo_feels": TEMPO_FEELS,
         "max_duration": config.MAX_DURATION,
+        "vocal_lora_default": config.VOCAL_LORA,
     }
 
 
@@ -141,6 +143,8 @@ def _run_job(job_id: str, req: GenerateRequest, composed: dict) -> None:
             ref_audio_path=ref_path,
             ref_audio_strength=req.ref_audio_strength,
             variant=req.model_variant,
+            lyric_adherence=req.lyric_adherence,
+            vocal_lora=(req.vocal_lora or config.VOCAL_LORA or None),
             progress_cb=progress,
         )
 
@@ -162,6 +166,14 @@ def _run_job(job_id: str, req: GenerateRequest, composed: dict) -> None:
 
 @app.post("/api/generate", response_model=GenerateResponse)
 def generate(req: GenerateRequest):
+    # Consent gate: cloning/matching a reference voice requires confirming you
+    # have the right to use that voice.
+    if req.ref_audio_id and req.ref_role == "voice" and not req.clone_consent:
+        raise HTTPException(
+            status_code=400,
+            detail="Please confirm you have the right to use the uploaded voice.",
+        )
+
     composed = prompt_composer.compose(
         mode=req.mode,
         text_prompt=req.text_prompt,
@@ -176,6 +188,11 @@ def generate(req: GenerateRequest):
         structure=req.structure,
         instrumental=req.instrumental,
         extra_tags=req.extra_tags,
+        lyrics=req.lyrics,
+        vocal_gender=req.vocal_gender,
+        vocal_styles=req.vocal_styles,
+        language=req.language,
+        ref_role=req.ref_role,
     )
     if not composed["prompt"].strip():
         raise HTTPException(status_code=400, detail="Empty prompt - pick a genre or enter a description.")

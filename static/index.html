@@ -128,19 +128,64 @@
           <div class="struct-sequence" id="structSeq"></div>
         </div>
 
-        <!-- Instrumental toggle -->
+        <!-- Vocals toggle -->
         <div class="field toggle-row">
-          <label class="field-label" for="instrumental">Instrumental (no vocals)</label>
+          <label class="field-label" for="vocalsOn">Add vocals</label>
           <label class="switch">
-            <input type="checkbox" id="instrumental" checked />
+            <input type="checkbox" id="vocalsOn" />
             <span class="track"></span>
           </label>
         </div>
       </div>
 
+      <!-- VOCALS PANEL -->
+      <div class="panel" id="vocalPanel" hidden>
+        <h2 class="panel-title">Vocals</h2>
+
+        <div class="field">
+          <label class="field-label">Lyrics
+            <button type="button" class="link" id="insertStructure">insert structure</button>
+          </label>
+          <textarea id="lyrics" rows="6"
+            placeholder="[verse]&#10;Write your lyrics here&#10;[chorus]&#10;Tap 'insert structure' to scaffold sections"></textarea>
+          <p class="hint">Use [verse], [chorus], [bridge] tags on their own lines. Leave blank to let the model improvise vocals.</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Voice</label>
+            <div class="select-wrap"><select id="vocalGender"><option value="">— any —</option></select></div>
+          </div>
+          <div class="field">
+            <label class="field-label">Language</label>
+            <div class="select-wrap"><select id="language"></select></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Vocal style
+            <span class="readout" id="vstyleReadout">default</span>
+          </label>
+          <div class="chips" id="vocalStyles"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Lyric adherence
+            <span class="readout" id="lyricAdhReadout">model default</span>
+          </label>
+          <input type="range" id="lyricAdherence" min="0" max="10" value="0" step="1" class="slider" />
+          <div class="scale-ticks"><span>default</span><span>subtle</span><span>balanced</span><span>strict to words</span></div>
+        </div>
+      </div>
+
       <!-- REFERENCE AUDIO -->
       <div class="panel">
-        <h2 class="panel-title">Build from a clip <span class="opt">optional · audio2audio</span></h2>
+        <h2 class="panel-title">Reference clip <span class="opt">optional</span></h2>
+        <div class="mini-switch" id="refRoleSwitch">
+          <button type="button" class="mini-btn active" data-role="music">Musical style</button>
+          <button type="button" class="mini-btn" data-role="voice">Clone / match voice</button>
+        </div>
+        <p class="hint" id="refRoleHint">Generate a new track guided by the clip's musical style (audio2audio).</p>
         <div class="dropzone" id="dropzone">
           <input type="file" id="fileInput" accept="audio/*" hidden />
           <div class="dz-inner" id="dzInner">
@@ -150,11 +195,15 @@
           </div>
         </div>
         <div class="field ref-strength" id="refStrengthWrap" hidden>
-          <label class="field-label">Stay close to reference
+          <label class="field-label" id="refStrengthLabel">Stay close to reference
             <span class="readout" id="refReadout">0.50</span>
           </label>
           <input type="range" id="refStrength" min="0" max="100" value="50" class="slider" />
         </div>
+        <label class="consent" id="consentWrap" hidden>
+          <input type="checkbox" id="cloneConsent" />
+          <span>I have the right to use this voice — it's my own, or I have the singer's consent.</span>
+        </label>
       </div>
 
       <!-- ADVANCED -->

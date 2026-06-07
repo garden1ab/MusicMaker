@@ -89,6 +89,20 @@ DEMO_MODE=1 DATA_DIR=./data uvicorn app.main:app --reload
 | Build from a clip | Upload audio for **audio2audio**; the strength slider controls how closely the output follows it |
 | Advanced | Seed, quality (sampling steps), guidance scale, extra tags |
 
+### Vocals & voice
+
+Flip on **Add vocals** to open the vocals panel:
+
+- **Lyrics** — type your own, using `[verse]`/`[chorus]`/`[bridge]` tags on their own lines (the *insert structure* button scaffolds them from your chosen structure blocks). Leave it blank and the model improvises vocals.
+- **Voice** — female / male / androgynous / choir / child.
+- **Vocal style** — stackable tags like soulful, raspy, falsetto, operatic, rap, breathy, autotuned…
+- **Language** — ACE-Step handles ~10 languages well.
+- **Lyric adherence** — how tightly the melody hugs your exact words.
+
+**Voice cloning / matching.** In the *Reference clip* panel, switch the role to **Clone / match voice** and upload a singing clip. The open ACE-Step model does this *zero-shot*: it carries the reference singer's timbre into the generated vocals via its audio-conditioning path (turn the "match voice strength" up for a closer match). This is reference-based voice *matching* — good for demos and same-voice consistency, but it is not studio-grade cloning. For high-fidelity cloning of a specific voice you'd train a LoRA on that voice (see ACE-Step's `TRAIN_INSTRUCTION.md`) or use a dedicated vocal-synth tool.
+
+> ⚠️ **Use voices you have the right to.** The app requires you to confirm the uploaded voice is your own or used with the singer's consent. Don't clone real artists to impersonate them — it's very likely a violation of publicity/likeness rights and platform rules.
+
 Hit **Generate**, watch the oscilloscope, then play or download the resulting `.wav`.
 
 ---

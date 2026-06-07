@@ -26,6 +26,14 @@ class GenerateRequest(BaseModel):
     instrumental: bool = True
     extra_tags: Optional[str] = None
 
+    # Vocals
+    lyrics: Optional[str] = None
+    vocal_gender: Optional[str] = None
+    vocal_styles: list[str] = Field(default_factory=list)
+    language: Optional[str] = None
+    lyric_adherence: Optional[float] = None   # maps to guidance_scale_lyric
+    vocal_lora: Optional[str] = None          # optional Lyric2Vocal LoRA path/id
+
     # Output controls
     duration: float = 60.0                # seconds
     seed: Optional[int] = None
@@ -35,9 +43,11 @@ class GenerateRequest(BaseModel):
     infer_steps: int = 60
     guidance_scale: float = 15.0
 
-    # Audio2Audio (build from uploaded clip)
+    # Reference clip (build-from / voice cloning)
     ref_audio_id: Optional[str] = None    # id returned by /api/upload
     ref_audio_strength: float = 0.5       # 0 = ignore ref, 1 = stay very close
+    ref_role: str = "music"               # "music" | "voice"
+    clone_consent: bool = False           # required when ref_role == "voice"
 
 
 class GenerateResponse(BaseModel):

@@ -97,6 +97,8 @@ class _PipelineHolder:
         ref_audio_path: Optional[Path],
         ref_audio_strength: float,
         variant: str,
+        lyric_adherence: Optional[float] = None,
+        vocal_lora: Optional[str] = None,
         progress_cb=None,
     ) -> int:
         """Run a real generation. Returns the seed actually used."""
@@ -129,7 +131,18 @@ class _PipelineHolder:
             "batch_size": 1,
         }
 
-        # Audio2Audio: build from an uploaded reference clip.
+        # Stronger lyric guidance makes the model adhere more tightly to the
+        # provided words / melody-around-words.
+        if lyric_adherence is not None:
+            call_kwargs["guidance_scale_lyric"] = float(lyric_adherence)
+
+        # Optional Lyric2Vocal (or other) LoRA for pure-vocal generation.
+        if vocal_lora:
+            call_kwargs["lora_name_or_path"] = vocal_lora
+
+        # Audio2Audio: build from an uploaded reference clip OR carry a
+        # reference singer's timbre (zero-shot voice matching). Both use the
+        # same conditioning path in the open ACE-Step pipeline.
         if ref_audio_path is not None:
             call_kwargs.update(
                 {
@@ -172,6 +185,8 @@ def run_generation(
     ref_audio_path: Optional[Path] = None,
     ref_audio_strength: float = 0.5,
     variant: Optional[str] = None,
+    lyric_adherence: Optional[float] = None,
+    vocal_lora: Optional[str] = None,
     progress_cb=None,
 ) -> int:
     variant = variant or config.DEFAULT_MODEL
@@ -198,6 +213,8 @@ def run_generation(
         ref_audio_path=ref_audio_path,
         ref_audio_strength=ref_audio_strength,
         variant=variant,
+        lyric_adherence=lyric_adherence,
+        vocal_lora=vocal_lora,
         progress_cb=progress_cb,
     )
 

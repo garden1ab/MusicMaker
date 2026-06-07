@@ -25,6 +25,11 @@ for d in (OUTPUT_DIR, UPLOAD_DIR, CHECKPOINT_DIR):
 # Set ACE_MODEL=ACE-Step/ACE-Step-v1.5-3.5B (or the XL variant) to override.
 DEFAULT_MODEL = os.getenv("ACE_MODEL", "ACE-Step/ACE-Step-v1-3.5B")
 
+# Optional Lyric2Vocal LoRA (generates isolated/pure vocal stems from lyrics).
+# Left empty by default - base model already sings lyrics. Set to a HuggingFace
+# repo id or local path to enable the pure-vocal sub-task.
+VOCAL_LORA = os.getenv("ACE_VOCAL_LORA", "").strip()
+
 # Precision / memory knobs (all map onto ACE-Step pipeline args).
 DTYPE = os.getenv("ACE_DTYPE", "bfloat16")                 # bfloat16 | float32
 TORCH_COMPILE = _bool(os.getenv("ACE_TORCH_COMPILE"), False)

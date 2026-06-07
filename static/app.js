@@ -11,7 +11,9 @@
     catalog: null,
     instruments: new Set(),
     structure: [],
+    vocalStyles: new Set(),
     refAudioId: null,
+    refRole: "music",
     polling: null,
   };
 
@@ -109,6 +111,24 @@
 
     // duration cap
     if (c.max_duration) $("duration").max = c.max_duration;
+
+    // vocals
+    const v = c.vocals || { genders: [], styles: [], languages: [] };
+    v.genders.forEach((g) => $("vocalGender").add(new Option(g, g)));
+    v.languages.forEach((l) => $("language").add(new Option(l, l)));
+    $("language").value = "English";
+    const vsc = $("vocalStyles");
+    v.styles.forEach((s) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = s;
+      chip.addEventListener("click", () => {
+        if (state.vocalStyles.has(s)) { state.vocalStyles.delete(s); chip.classList.remove("on"); }
+        else { state.vocalStyles.add(s); chip.classList.add("on"); }
+        $("vstyleReadout").textContent = state.vocalStyles.size ? `${state.vocalStyles.size} selected` : "default";
+      });
+      vsc.appendChild(chip);
+    });
   }
 
   function populateSubgenres() {
@@ -136,6 +156,43 @@
       seq.appendChild(pill);
     });
     $("structReadout").textContent = state.structure.length ? `${state.structure.length} blocks` : "model decides";
+  }
+
+  // ---------- vocals + reference role ----------
+  function setupVocals() {
+    $("vocalsOn").addEventListener("change", (e) => {
+      $("vocalPanel").hidden = !e.target.checked;
+    });
+    $("insertStructure").addEventListener("click", () => {
+      const blocks = state.structure.length ? state.structure : ["verse", "chorus", "verse", "chorus", "bridge", "chorus"];
+      const ta = $("lyrics");
+      const scaffold = blocks.map((b) => `[${b}]\n`).join("\n");
+      ta.value = ta.value.trim() ? ta.value.trim() + "\n\n" + scaffold : scaffold;
+      ta.focus();
+    });
+    $("lyricAdherence").addEventListener("input", (e) => {
+      const v = +e.target.value;
+      const label = v === 0 ? "model default" : v <= 3 ? `subtle (${v})` : v <= 6 ? `balanced (${v})` : `strict (${v})`;
+      $("lyricAdhReadout").textContent = label;
+    });
+  }
+
+  function setupRefRole() {
+    $("refRoleSwitch").querySelectorAll(".mini-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        $("refRoleSwitch").querySelectorAll(".mini-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.refRole = btn.dataset.role;
+        const voice = state.refRole === "voice";
+        $("refRoleHint").textContent = voice
+          ? "Carry the reference singer's timbre into the generated vocals (zero-shot voice match). Best with vocals on."
+          : "Generate a new track guided by the clip's musical style (audio2audio).";
+        $("refStrengthLabel").childNodes[0].nodeValue = voice ? "Match voice strength " : "Stay close to reference ";
+        $("consentWrap").hidden = !(voice && state.refAudioId);
+        // Voice matching wants a higher default strength.
+        if (voice && $("refStrength").value === "50") { $("refStrength").value = 75; $("refReadout").textContent = "0.75"; }
+      });
+    });
   }
 
   // ---------- mode switch ----------
@@ -194,6 +251,7 @@
       $("dzInner").innerHTML = `<span class="dz-icon">✓</span><p>${res.filename}</p>
         <p class="hint"><button type="button" class="link" id="clearRef">remove</button></p>`;
       $("refStrengthWrap").hidden = false;
+      if (state.refRole === "voice") $("consentWrap").hidden = false;
       $("clearRef").addEventListener("click", (e) => { e.stopPropagation(); clearRef(); });
     } catch (err) {
       $("dzInner").innerHTML = `<span class="dz-icon">⚠</span><p>upload failed</p><p class="hint">${err.message}</p>`;
@@ -203,6 +261,8 @@
     state.refAudioId = null;
     $("dropzone").classList.remove("loaded");
     $("refStrengthWrap").hidden = true;
+    $("consentWrap").hidden = true;
+    if ($("cloneConsent")) $("cloneConsent").checked = false;
     $("dzInner").innerHTML = `<span class="dz-icon">⤓</span>
       <p>Drop an audio clip or <button type="button" class="link" id="browseBtn">browse</button></p>
       <p class="hint">wav / mp3 / flac · up to 50&nbsp;MB</p>`;
@@ -268,6 +328,8 @@
   function collectRequest() {
     const tempo = $("tempo").value;
     const seedVal = $("seed").value.trim();
+    const vocalsOn = $("vocalsOn").checked;
+    const adh = +$("lyricAdherence").value;
     return {
       mode: state.mode,
       text_prompt: $("textPrompt").value,
@@ -280,14 +342,24 @@
       tempo: tempo,
       key: $("key").value || null,
       structure: state.structure,
-      instrumental: $("instrumental").checked,
+      instrumental: !vocalsOn,
       extra_tags: $("extraTags").value || null,
+      // vocals
+      lyrics: vocalsOn ? ($("lyrics").value || null) : null,
+      vocal_gender: vocalsOn ? ($("vocalGender").value || null) : null,
+      vocal_styles: vocalsOn ? [...state.vocalStyles] : [],
+      language: vocalsOn ? ($("language").value || null) : null,
+      lyric_adherence: (vocalsOn && adh > 0) ? adh : null,
+      // output
       duration: +$("duration").value,
       seed: seedVal === "" ? null : +seedVal,
       infer_steps: +$("steps").value,
       guidance_scale: +$("guidance").value,
+      // reference
       ref_audio_id: state.refAudioId,
       ref_audio_strength: +$("refStrength").value / 100,
+      ref_role: state.refRole,
+      clone_consent: $("cloneConsent") ? $("cloneConsent").checked : false,
     };
   }
 
@@ -305,6 +377,13 @@
 
     try {
       const req = collectRequest();
+      if (req.ref_audio_id && req.ref_role === "voice" && !req.clone_consent) {
+        resetBtn(); $("progressWrap").hidden = true;
+        $("errBox").textContent = "Please confirm you have the right to use the uploaded voice.";
+        $("errBox").hidden = false;
+        setViz("idle", "Hold on", "Confirm voice rights to continue.");
+        return;
+      }
       const { job_id } = await api("/api/generate", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(req),
       });
@@ -364,7 +443,7 @@
   window.addEventListener("resize", sizeCanvas);
   document.addEventListener("DOMContentLoaded", async () => {
     sizeCanvas(); drawScope(); animateLogo();
-    setupModes(); setupSliders(); setupUpload();
+    setupModes(); setupSliders(); setupUpload(); setupVocals(); setupRefRole();
     $("generateBtn").addEventListener("click", generate);
     setViz("idle", "Ready", "Configure your track and hit generate.");
     await loadStatus();
