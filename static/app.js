@@ -420,6 +420,20 @@
     setViz("idle", "Done ✓", "Press play.");
     $("metaPrompt").textContent = s.prompt_used || "";
     $("metaSeed").textContent = s.seed ?? "—";
+    const reuse = $("reuseSeed");
+    if (s.seed != null) {
+      reuse.hidden = false;
+      reuse.onclick = () => {
+        $("seed").value = s.seed;
+        const adv = document.querySelector(".advanced");
+        if (adv && !adv.open) adv.open = true;          // reveal the seed field
+        $("seed").focus();
+        reuse.classList.add("flash");
+        setTimeout(() => reuse.classList.remove("flash"), 500);
+      };
+    } else {
+      reuse.hidden = true;
+    }
     $("downloadBtn").href = s.audio_url;
     $("resultMeta").hidden = false;
   }

@@ -288,6 +288,15 @@ textarea { resize: vertical; line-height: 1.5; }
 .meta-k { font-family: var(--mono); color: var(--ink-faint); text-transform: uppercase;
   font-size: 10px; letter-spacing: 1px; min-width: 52px; padding-top: 2px; }
 .meta-v { color: var(--ink-dim); word-break: break-word; line-height: 1.5; }
+.seed-reuse {
+  margin-left: auto; flex-shrink: 0; align-self: center;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.5px;
+  color: var(--amber); background: rgba(255,157,60,0.08);
+  border: 1px solid rgba(255,157,60,0.3); border-radius: 6px;
+  padding: 3px 9px; cursor: pointer; transition: 0.15s;
+}
+.seed-reuse:hover { background: rgba(255,157,60,0.18); }
+.seed-reuse.flash { background: var(--amber); color: #1a1206; }
 .download-btn {
   display: inline-block; text-align: center; margin-top: 6px;
   font-family: var(--mono); font-size: 12px; letter-spacing: 1px; text-decoration: none;

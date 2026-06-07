@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import inspect
 import math
+import random
 import struct
 import threading
 import wave
@@ -106,7 +107,7 @@ class _PipelineHolder:
         if progress_cb:
             progress_cb(0.15, "Model loaded, sampling...")
 
-        manual_seeds = [seed] if seed is not None else None
+        manual_seeds = [seed]
 
         call_kwargs = {
             "audio_duration": float(duration),
@@ -164,7 +165,7 @@ class _PipelineHolder:
             cand = sorted(out_path.parent.glob(out_path.stem + "*"))
             if cand:
                 cand[0].rename(out_path)
-        return seed if seed is not None else -1
+        return seed
 
 
 _holder = _PipelineHolder()
@@ -191,15 +192,19 @@ def run_generation(
 ) -> int:
     variant = variant or config.DEFAULT_MODEL
 
+    # Always resolve to a concrete seed so the UI can show it and the user can
+    # reproduce or tweak the result. "Random" just means we pick the number.
+    if seed is None:
+        seed = random.randint(0, 2**32 - 1)
+
     # Demo / no-GPU fallback ------------------------------------------------
     if config.DEMO_MODE or not _torch_available():
         if progress_cb:
             progress_cb(0.5, "DEMO mode: synthesising placeholder tone")
-        used_seed = seed if seed is not None else 1234
-        _write_demo_tone(out_path, duration=min(duration, 12), seed=used_seed)
+        _write_demo_tone(out_path, duration=min(duration, 12), seed=seed)
         if progress_cb:
             progress_cb(1.0, "Done (demo)")
-        return used_seed
+        return seed
 
     # Real generation -------------------------------------------------------
     return _holder.generate(
